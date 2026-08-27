@@ -9,3 +9,12 @@
 ## Notes
 - Region constrained to Azure for Students allowed list: uaenorth, eastasia, malaysiawest, indiasouthcentral, indonesiacentral
 - Chose Malaysia West for lowest latency
+
+- Virtual Machine: `vm-web-01`
+  - Size: Standard B2ats_v2 (1 vCPU... wait, 2 vCPU / 1 GiB RAM)
+  - OS: Ubuntu Server 24.04 LTS
+  - Auth: SSH public key (RSA), no password login
+  - Public inbound ports: None (relies on custom NSG instead of Azure defaults)
+  - Disk: Standard SSD (Standard_LRS)
+  - Region: Malaysia West (subscription-restricted allowed list)
+  
