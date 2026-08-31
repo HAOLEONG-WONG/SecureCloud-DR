@@ -18,3 +18,11 @@
   - Disk: Standard SSD (Standard_LRS)
   - Region: Malaysia West (subscription-restricted allowed list)
   
+  ## Phase 3 — Web Application Deployed
+
+- Nginx (reverse proxy, port 80, public)
+- Gunicorn (WSGI server, port 5000, internal only — bound to 127.0.0.1)
+- Flask app (`~/webapp/app.py`), running as systemd service `webapp.service`
+- NSG updated: added `Allow-HTTP-Any` rule (port 80, source: Any)
+
+Architecture: Internet → NSG → Nginx (80) → Gunicorn (127.0.0.1:5000) → Flask
