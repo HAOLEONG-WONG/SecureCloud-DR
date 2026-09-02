@@ -26,3 +26,25 @@
 - NSG updated: added `Allow-HTTP-Any` rule (port 80, source: Any)
 
 Architecture: Internet → NSG → Nginx (80) → Gunicorn (127.0.0.1:5000) → Flask
+
+## Phase 3 — Login Feature Added
+
+- SQLite database (`users.db`) with a `users` table, one test user seeded
+- `/login` route added to Flask app: accepts POST with username/password
+- **Intentional vulnerability:** SQL query built via f-string concatenation, 
+  not parameterized — deliberately left as an attack surface for Phase 7 
+  (SQL Injection simulation)
+- Correct/secure version for future remediation reference:
+  `c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))`
+
+### Troubleshooting notes (kept for reference)
+- Files initially created in wrong directory (`~` instead of `~/webapp`) — 
+  systemd service reads from `~/webapp`, so changes weren't reflected until 
+  corrected
+- Database filename mismatch (`user.db` vs `users.db`) caused a fresh empty 
+  DB to be auto-created by SQLite, leading to a 500 error (missing table)
+- Multi-line heredoc (`cat > file << 'EOF'`) proved more reliable than nano 
+  for pasting code without indentation corruption
+
+
+  
