@@ -53,3 +53,43 @@ Architecture: Internet → NSG → Nginx (80) → Gunicorn (127.0.0.1:5000) → 
 - Fields captured: timestamp (UTC, ISO 8601), event_type, username, result (SUCCESS/FAILURE), source_ip
 - Purpose: prepares telemetry for Phase 4 (Azure Monitor → Log Analytics ingestion) 
   and Phase 6 Detection 001 (Brute Force — repeated authentication failures)
+
+## Phase 4 — Centralized Logging (Azure Monitor → Log Analytics)
+
+### Components Deployed
+- **Log Analytics Workspace:** `law-securecloud-dr` (Malaysia West, 30-day retention)
+- **Azure Monitor Agent:** installed on `vm-web-01`
+- **Data Collection Rule:** `dcr-vm-web-01-logs`
+  - Data source: Linux Syslog
+  - Facilities collected: `LOG_AUTH`, `LOG_AUTHPRIV` (minimum level: `LOG_INFO`)
+  - Destination: `law-securecloud-dr`
+
+### Verification
+Confirmed SSH authentication events (`sshd`, `systemd-logind`) successfully 
+ingested into the `Syslog` table, including source IP, session open/close 
+events, and public key authentication results.
+
+### Query used for verification
+```kql
+Syslog
+| where Facility in ("auth", "authpriv")
+| order by TimeGenerated desc
+| take 20
+```
+
+### Design Note
+Data Collection Rule facility filtering controls collection scope, but does 
+not fully eliminate baseline system Syslog noise (e.g., `systemd`, 
+`MetricsExtension`). Filtering to auth-relevant events is instead handled 
+at the query layer (`where Facility in (...)`) rather than the ingestion 
+layer — consistent with typical SIEM workflow where raw ingestion is broad 
+and precision is applied through detection queries.
+
+### Cost
+Estimated monthly data ingestion cost: US$0.00 (well under the 5GB/day 
+free tier threshold given current log volume).
+
+### Security Note
+Real public IP addresses observed in Syslog data (e.g., SSH source IP) are 
+kept out of publicly committed evidence files. Sample evidence documents 
+use localhost (127.0.0.1) or redacted IPs instead of real addresses.
