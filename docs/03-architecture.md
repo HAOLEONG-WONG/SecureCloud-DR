@@ -46,5 +46,10 @@ Architecture: Internet → NSG → Nginx (80) → Gunicorn (127.0.0.1:5000) → 
 - Multi-line heredoc (`cat > file << 'EOF'`) proved more reliable than nano 
   for pasting code without indentation corruption
 
+## Phase 3 — Authentication Logging Added
 
-  
+- Structured JSON logging added to `/login` route
+- Log file: `~/webapp/auth.log`
+- Fields captured: timestamp (UTC, ISO 8601), event_type, username, result (SUCCESS/FAILURE), source_ip
+- Purpose: prepares telemetry for Phase 4 (Azure Monitor → Log Analytics ingestion) 
+  and Phase 6 Detection 001 (Brute Force — repeated authentication failures)
