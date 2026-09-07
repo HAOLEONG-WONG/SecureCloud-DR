@@ -30,3 +30,37 @@ resource "azurerm_subnet" "web" {
   address_prefixes     = ["10.0.0.0/24"]
   default_outbound_access_enabled = false
 }
+
+resource "azurerm_network_security_group" "web" {
+  name                = "nsg-web"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+}
+
+resource "azurerm_network_security_rule" "allow_ssh" {
+  name                        = "Allow-SSH-MyIP"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "22"
+  source_address_prefix       = var.my_ip_address
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.main.name
+  network_security_group_name = azurerm_network_security_group.web.name
+}
+
+resource "azurerm_network_security_rule" "allow_http" {
+  name                        = "Allow-HTTP-Any"
+  priority                    = 110
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "80"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.main.name
+  network_security_group_name = azurerm_network_security_group.web.name
+}
