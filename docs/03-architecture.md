@@ -93,3 +93,37 @@ free tier threshold given current log volume).
 Real public IP addresses observed in Syslog data (e.g., SSH source IP) are 
 kept out of publicly committed evidence files. Sample evidence documents 
 use localhost (127.0.0.1) or redacted IPs instead of real addresses.
+
+## Phase 2 — Terraform (Infrastructure as Code)
+
+### Approach
+Existing manually-created resources were migrated into Terraform management 
+using `terraform import`, rather than destroying and recreating them — 
+preserving the working VM, application, and log data built in Phases 3-4.
+
+### Resources Imported
+- `azurerm_resource_group.main` → `rg-securecloud-dr-lab`
+- `azurerm_virtual_network.main` → `vnet-securecloud-dr`
+- `azurerm_subnet.web` → `snet-web`
+- `azurerm_network_security_group.web` → `nsg-web`
+- `azurerm_network_security_rule.allow_ssh` → `Allow-SSH-MyIP`
+- `azurerm_network_security_rule.allow_http` → `Allow-HTTP-Any`
+
+### Still Pending
+- Virtual Machine (`vm-web-01`) — not yet imported
+- Storage Account (`stsecuredr01`) — not yet imported
+
+### Security Practice
+The SSH-allowed source IP is a variable (`var.my_ip_address`), not a 
+hardcoded value, and is marked `sensitive = true` in `variables.tf`. The 
+actual IP value is stored in `terraform.tfvars`, which is excluded via 
+`.gitignore` and never committed to the public repository.
+
+### Lessons Learned
+- `terraform plan` showing "destroy and recreate" for a resource (e.g., 
+  subnet) usually indicates a missing attribute in the config that doesn't 
+  match Azure's actual default — resolved by explicitly setting 
+  `default_outbound_access_enabled = false` to match the real resource.
+- Terraform commands must be run from the local machine (where Terraform 
+  is installed), not from within the SSH session to the Azure VM — these 
+  are two separate environments with separate toolchains.
