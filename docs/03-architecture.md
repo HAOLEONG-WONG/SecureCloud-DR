@@ -165,3 +165,17 @@ NIC, Public IP) is now fully managed by Terraform. `terraform plan` returns
 
 ### Still Pending
 - Storage Account (`stsecuredr01`) — not yet imported
+
+## Phase 2 — Terraform (continued): Storage Account
+
+### Resource Imported
+- `azurerm_storage_account.main` → `stsecuredr01`
+
+### Status
+All core infrastructure now under Terraform management: Resource Group, 
+VNet, Subnet, NSG + rules, VM, NIC, Public IP, Storage Account. 
+`terraform plan` returns "No changes" across the board.
+
+### Still Pending (Phase 2 close-out)
+- `terraform destroy` + `terraform apply` full-cycle test not yet performed 
+  — this is the last unverified item in FR-001's acceptance criteria.
