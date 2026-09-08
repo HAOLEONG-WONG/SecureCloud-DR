@@ -127,3 +127,41 @@ actual IP value is stored in `terraform.tfvars`, which is excluded via
 - Terraform commands must be run from the local machine (where Terraform 
   is installed), not from within the SSH session to the Azure VM — these 
   are two separate environments with separate toolchains.
+
+## Phase 2 — Terraform (continued): VM, Network Interface, Public IP
+
+### Resources Imported
+- `azurerm_network_interface.vm_web_01` → `vm-web-01462`
+- `azurerm_linux_virtual_machine.web` → `vm-web-01`
+- `azurerm_public_ip.vm_web_01` → `vm-web-01-ip`
+
+### Issues Resolved
+- **SSH public key generation**: Azure only provides the private key (`.pem`) 
+  on VM creation; the public key was derived locally using 
+  `ssh-keygen -y -f vm-web-01_key.pem`, required by Terraform's 
+  `admin_ssh_key` attribute.
+- **admin_ssh_key drift**: Azure appends `generated-by-azure` to the stored 
+  public key, causing a permanent diff against the locally-derived key. 
+  Resolved with `lifecycle { ignore_changes = [admin_ssh_key] }` — a 
+  standard Terraform pattern for platform-generated metadata that should 
+  not trigger resource replacement.
+- **Case sensitivity**: `source_image_reference.publisher` required lowercase 
+  `"canonical"` to match Azure's stored value (was `"Canonical"`).
+- **Public IP SKU**: Standard SKU requires `allocation_method = "Static"` 
+  (not `"Dynamic"`) — a hard Azure platform constraint.
+- Explicitly declared `identity`, `boot_diagnostics`, and 
+  `additional_capabilities` blocks to prevent Terraform from disabling 
+  these features on apply (omitting them would have set them to null/disabled).
+
+### Multi-IP SSH Access
+Migrated from a single `source_address_prefix` to `source_address_prefixes` 
+(list) to support SSH access from multiple trusted networks (e.g., home, 
+mobile hotspot) without manually editing the NSG rule each time the IP changes.
+
+### Status
+All core infrastructure (Resource Group, VNet, Subnet, NSG + rules, VM, 
+NIC, Public IP) is now fully managed by Terraform. `terraform plan` returns 
+"No changes" — configuration matches real infrastructure exactly.
+
+### Still Pending
+- Storage Account (`stsecuredr01`) — not yet imported
