@@ -200,3 +200,36 @@ Two Log Analytics Workspaces now exist:
   (via cross-workspace query or data export) — currently Sentinel is 
   attached to an empty workspace with no log data flowing in yet.
 - Write Detection 001 (Brute Force)
+
+### Verification (Post-Setup)
+Confirmed Sentinel's Logs interface works via the new unified Defender 
+Portal (security.microsoft.com) — Microsoft has migrated the Sentinel 
+management UI here from the classic Azure Portal.
+
+Ran verification query against `law-securecloud-sentinel`:
+```kql
+Syslog
+| where Facility in ("auth", "authpriv")
+| order by TimeGenerated desc
+| take 5
+```
+Result: "No results found" — **expected**, not an error. This workspace 
+(East Asia) is separate from `law-securecloud-dr` (Malaysia West), where 
+VM logs actually flow. Confirms the pending task below.
+
+### Next Session: Connect the Two Workspaces
+Sentinel is attached to `law-securecloud-sentinel`, but the VM's Syslog 
+data lives in `law-securecloud-dr`. Options to investigate:
+1. **Cross-workspace query** — Sentinel can query across workspaces using 
+   the `workspace("law-securecloud-dr").Syslog` syntax in KQL, without 
+   moving data. Likely the simplest fix for detection rules.
+2. **Data Export** — configure `law-securecloud-dr` to export/duplicate 
+   data into `law-securecloud-sentinel`. More setup, but keeps everything 
+   in one place long-term.
+3. **Alternative (bigger change)**: point the VM's Data Collection Rule 
+   directly at `law-securecloud-sentinel` instead, consolidating into one 
+   workspace. Would need to confirm this doesn't break the region 
+   constraint (VM/DCR earlier required Malaysia West alignment).
+
+Recommendation for next session: try option 1 first (cross-workspace 
+query) — it's non-destructive and quick to test.
