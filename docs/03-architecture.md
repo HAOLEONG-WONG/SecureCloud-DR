@@ -179,3 +179,24 @@ VNet, Subnet, NSG + rules, VM, NIC, Public IP, Storage Account.
 ### Still Pending (Phase 2 close-out)
 - `terraform destroy` + `terraform apply` full-cycle test not yet performed 
   — this is the last unverified item in FR-001's acceptance criteria.
+
+## Phase 5 — Microsoft Sentinel
+
+### Setup
+- New Log Analytics Workspace created: `law-securecloud-sentinel` (East Asia)
+- Reason: Sentinel does not support Malaysia West region; East Asia was 
+  the closest region both (a) supported by Sentinel and (b) allowed by the 
+  Azure for Students subscription's region policy.
+- Microsoft Sentinel added to this workspace — 31-day free trial active 
+  (10 GB/day free for Sentinel + Log Analytics combined)
+
+### Architecture Note
+Two Log Analytics Workspaces now exist:
+- `law-securecloud-dr` (Malaysia West) — VM/application logs
+- `law-securecloud-sentinel` (East Asia) — Sentinel SIEM
+
+### Still Pending
+- Need to connect data from `law-securecloud-dr` into Sentinel's visibility 
+  (via cross-workspace query or data export) — currently Sentinel is 
+  attached to an empty workspace with no log data flowing in yet.
+- Write Detection 001 (Brute Force)
