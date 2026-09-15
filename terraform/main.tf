@@ -145,3 +145,54 @@ resource "azurerm_storage_account" "main" {
   cross_tenant_replication_enabled = false
 
 }
+
+resource "azurerm_monitor_data_collection_rule" "vm_logs" {
+  name                = "dcr-vm-web-01-logs-eastasia"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = "East Asia"
+  kind                = "Linux"
+
+  destinations {
+    log_analytics {
+      workspace_resource_id = azurerm_log_analytics_workspace.sentinel.id
+      name                  = "destination-log"
+    }
+  }
+
+  data_flow {
+    streams      = ["Microsoft-Syslog"]
+    destinations = ["destination-log"]
+  }
+
+  data_sources {
+    syslog {
+      facility_names = ["auth", "authpriv"]
+      log_levels     = ["Info", "Notice", "Warning", "Error", "Critical", "Alert", "Emergency"]
+      name           = "syslog-datasource"
+    }
+  }
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "azurerm_monitor_data_collection_rule_association" "vm_web_01" {
+  name                    = "dcr-vm-web-01-logs-association"
+  target_resource_id      = azurerm_linux_virtual_machine.web.id
+  data_collection_rule_id = azurerm_monitor_data_collection_rule.vm_logs.id
+}
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = "law-securecloud-dr"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+}
+
+resource "azurerm_log_analytics_workspace" "sentinel" {
+  name                = "law-securecloud-sentinel"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = "East Asia"
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+}

@@ -233,3 +233,66 @@ data lives in `law-securecloud-dr`. Options to investigate:
 
 Recommendation for next session: try option 1 first (cross-workspace 
 query) — it's non-destructive and quick to test.
+
+## Phase 4/5 Architecture Fix: Consolidated to Single Sentinel-Enabled Workspace
+
+### Problem Discovered
+After enabling Sentinel on a new workspace (`law-securecloud-sentinel`, 
+East Asia — see earlier Phase 5 section), discovered that VM logs were 
+still flowing into the original workspace (`law-securecloud-dr`, Malaysia 
+West). These were two disconnected workspaces.
+
+Attempted fix #1 — cross-workspace query (`workspace("law-securecloud-dr").Syslog`) 
+worked for manual querying, but Sentinel's official requirement for 
+**cross-workspace analytics rules** is that Sentinel must be deployed on 
+**every** referenced workspace. Since Sentinel doesn't support Malaysia 
+West, this path was a dead end for building actual detection rules.
+
+### Solution
+Rebuilt the Data Collection Rule in East Asia (`dcr-vm-web-01-logs-eastasia`), 
+pointing directly at `law-securecloud-sentinel`. The VM itself stays in 
+Malaysia West — only the logging pipeline (DCR) needed to move regions, 
+which Azure allows independently of the VM's own location.
+
+### Terraform Issues Encountered & Resolved
+1. **DCR `location` is immutable** — changing it forces full resource 
+   replacement (`-/+`), not an in-place update.
+2. **`ExistingAssociationsPreventDelete`** — the old DCR couldn't be 
+   deleted because a `azurerm_monitor_data_collection_rule_association` 
+   (linking the DCR to the VM) still referenced it. This association had 
+   never been imported into Terraform from Phase 4, so Terraform didn't 
+   know to manage it. Fixed by writing and importing 
+   `azurerm_monitor_data_collection_rule_association.vm_web_01`.
+3. **Destroy/create ordering** — default Terraform behavior destroys the 
+   old resource before creating the new one, which fails here since the 
+   association can't be released until the new DCR exists. Fixed with 
+   `lifecycle { create_before_destroy = true }`.
+4. **Duplicate name conflict** — `create_before_destroy` still failed 
+   because Azure resource names must be unique within a Resource Group, 
+   and the new DCR had the same name as the old one (not yet destroyed). 
+   Renamed to `dcr-vm-web-01-logs-eastasia` to resolve.
+
+### Verification
+Confirmed via direct (non-cross-workspace) KQL query against 
+`law-securecloud-sentinel`:
+```kql
+Syslog
+| where Facility in ("auth", "authpriv")
+| order by TimeGenerated desc
+| take 10
+```
+Result: 6 new events from `vm-web-01` (SSH auth/authpriv), no cross-workspace 
+syntax needed.
+
+### Current State
+- `law-securecloud-dr` (Malaysia West): historical data only, no longer 
+  receiving new logs (DCR association removed)
+- `law-securecloud-sentinel` (East Asia): active destination, Sentinel 
+  deployed and fully functional, receiving live VM syslog data directly
+
+### Lesson
+When platform-level constraints (e.g., regional service availability) 
+conflict with an existing architecture decision made earlier without full 
+information, it's sometimes cheaper to migrate the pipeline than to work 
+around the limitation with a more complex pattern (cross-workspace 
+querying) that turns out to have its own blocking requirements.
